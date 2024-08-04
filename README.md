@@ -6,6 +6,8 @@ Try out Live: [rahuldshetty.github.io/hands-free](https://rahuldshetty.github.io
 
 ![Demo](media/demo.jpg)
 
+https://github.com/user-attachments/assets/37868bed-98f5-4767-b085-0f0c846605af
+
 ## How It Works?
 
 ![Diagram](media/diagram.png)
