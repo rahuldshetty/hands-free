@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light dark">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand's Free</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.7/dist/bundle.min.js"></script>
+    <script src="helper.js"></script>
+</head>
+<body>
+
+<main class="container">
+    <h1>Hand's Free!</h1>
+
+    <p>Chat hands-free with AI-agent right in your browser.</p>
+
+    <p>Learn more about the project here: <a href="https://github.com/rahuldshetty/hands-free">Github</a>.</p>
+
+    <p id="engine-status"><i>Starting Speech Recognition Engine... Give permission to microphone when prompted</i></p>
+
+    <div id="chat-container">
+        <div id="messages">
+            <div class="message received">
+                <img class="avatar" src="https://robohash.org/robocop">
+                <div class="content">Hi there! How can I help you today? Speak something to get started.</div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    let GENERATION_IN_PROGRESS = false;
+
+    const audioElement = new Audio('sounds/notification.mp3');
+    const EVENT_TRANSCRIBE = "stt";
+    const EVENT_TEXT_GEN = "txt_gen";
+
+    const worker = new Worker('worker.js', { type: 'module' });
+
+    // VAD 
+    async function main() {
+        const myvad = await vad.MicVAD.new({
+        onSpeechStart: () => {
+            console.log("Speech start detected")
+        },
+        onSpeechEnd: async (audio) => {
+            if(!GENERATION_IN_PROGRESS){
+                // Send audio to worker for trascribing into text
+                worker.postMessage({
+                    "type": EVENT_TRANSCRIBE,
+                    "input": audio
+                });
+            }
+        }
+        })
+        myvad.start()
+        document.getElementById('engine-status').textContent = 'You are now speaking to an AI.'
+    }
+
+    worker.onmessage = (event) => {
+        if(event.data.type == EVENT_TRANSCRIBE){
+            // Add user message to list
+            createMessage('sent', event.data.text);
+
+            // Call Text generation after getting audio translation
+            GENERATION_IN_PROGRESS = true;
+            worker.postMessage({
+                "type": EVENT_TEXT_GEN,
+                "input": event.data.text
+            })
+        } else if(event.data.type == EVENT_TEXT_GEN){
+            // Called when Response received from AI-agent
+            if(event.data.text && !event.data.text.includes('BLANK_AUDIO')){
+                createMessage('received', event.data.text);
+                audioElement.currentTime = 0;
+                audioElement.play();
+            }
+            GENERATION_IN_PROGRESS = false;
+        }
+    };
+
+    main()
+
+</script>
+    
+</body>
+</html>
